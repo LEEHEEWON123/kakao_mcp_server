@@ -60,9 +60,22 @@ def draft_message(
     )
 
 
-def format_gift_card(gift_name: str, price_label: str, why: str, rank: int) -> str:
+def format_gift_card(
+    gift_name: str,
+    price_label: str,
+    why: str,
+    rank: int,
+    *,
+    link: str = "",
+    mall_name: str = "",
+) -> str:
     medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, "🎁")
-    return (
-        f"{medal} **{gift_name}** ({price_label})\n"
-        f"   └ {why}"
-    )
+    lines = [
+        f"{medal} **{gift_name}** ({price_label})",
+        f"   └ {why}",
+    ]
+    if mall_name:
+        lines.append(f"   🏪 {mall_name}")
+    if link:
+        lines.append(f"   🔗 {link}")
+    return "\n".join(lines)

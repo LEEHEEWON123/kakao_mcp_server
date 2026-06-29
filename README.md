@@ -10,10 +10,10 @@ MZ 감성 선물 큐레이터 MCP 서버. [AGENTIC PLAYER 10](https://b.kakao.co
 
 | Tool | 설명 |
 |------|------|
-| `recommend_gift` | 관계·상황·예산·vibe 기반 선물 추천 |
+| `recommend_gift` | 네이버 쇼핑 실검색 — 관계·상황·예산·vibe 기반 선물 추천 |
 | `draft_gift_message` | 카톡/DM용 메시지 초안 (5가지 tone) |
-| `compare_gifts` | 선물 A vs B MZ 관점 비교 |
-| `gift_by_vibe` | vibe만으로 빠른 추천 |
+| `compare_gifts` | 선물 A vs B 가격·쇼핑몰 비교 (실검색) |
+| `gift_by_vibe` | vibe만으로 네이버 쇼핑 실검색 |
 
 ## PlayMCP 등록 정보 (초안)
 
@@ -31,11 +31,24 @@ MZ 감성 선물 큐레이터 MCP 서버. [AGENTIC PLAYER 10](https://b.kakao.co
 cd kakao_mcp_server
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 
-# 서버 실행 (PYTHONPATH=src 필요)
+# 네이버 API 키 설정 (필수)
+cp .env.example .env
+# .env에 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 입력
+
+export NAVER_CLIENT_ID=...
+export NAVER_CLIENT_SECRET=...
+
 PYTHONPATH=src uvicorn gift_mate.server:app --host 0.0.0.0 --port 8080
 ```
+
+### 네이버 API 키 발급
+
+1. [Naver Developers](https://developers.naver.com/apps/#/register) → 애플리케이션 등록
+2. **사용 API**에서 **검색** 체크
+3. Client ID / Client Secret 복사
+4. Railway 배포 시 **Variables**에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 등록
 
 - Health: http://localhost:8080/health
 - MCP endpoint: http://localhost:8080/mcp
@@ -82,11 +95,11 @@ docker run -p 8080:8080 gift-mate-mcp
 
 ```
 src/gift_mate/
-├── server.py       # FastMCP + FastAPI
-├── recommender.py  # 추천 엔진
-├── messages.py     # MZ 톤 메시지 템플릿
-├── models.py
-└── data/gifts.json # 큐레이션 선물 DB (30종)
+├── server.py        # FastMCP + FastAPI
+├── recommender.py   # 검색어 조합 + 예산 필터링
+├── naver_search.py  # 네이버 쇼핑 API 클라이언트
+├── messages.py      # MZ 톤 메시지 템플릿
+└── models.py
 ```
 
 ## 본선 확장 아이디어 (Kakao Tools Widget)
