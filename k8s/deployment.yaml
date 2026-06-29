@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gift-mate-mcp
+  labels:
+    app: gift-mate-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gift-mate-mcp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: gift-mate-mcp
+    spec:
+      imagePullSecrets:
+        - name: kc-cr-secret
+      containers:
+        - name: mcp-server
+          image: REPLACE_WITH_KCR_IMAGE
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

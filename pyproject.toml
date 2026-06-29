@@ -1,0 +1,24 @@
+[project]
+name = "gift-mate-mcp"
+version = "0.1.0"
+description = "MZ 감성 선물 고민 종결 MCP — PlayMCP / AGENTIC PLAYER 10"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.9.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+]
+
+[project.scripts]
+gift-mate = "gift_mate.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gift_mate"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/gift_mate" = "gift_mate"

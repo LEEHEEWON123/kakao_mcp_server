@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gift-mate-mcp-service
+  labels:
+    app: gift-mate-mcp
+spec:
+  type: LoadBalancer
+  selector:
+    app: gift-mate-mcp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
