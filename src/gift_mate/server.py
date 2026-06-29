@@ -10,19 +10,20 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from gift_mate.messages import draft_message, format_gift_card
 from gift_mate.models import BUDGET_LABELS
 from gift_mate.naver_search import ShopGift, credentials_configured
-from gift_mate.recommender import find_gift_by_name, gifts_by_vibe, recommend_gifts
+from gift_mate.recommender import find_gift_by_name, gifts_by_vibe, quick_gift_search, recommend_gifts
 
 INSTRUCTIONS = """
 너는 MZ 감성 선물 큐레이터 '기프트메이트(Gift Mate)'야.
 
-★ 중요: 선물 추천·비교·vibe 검색 요청이 오면 반드시 MCP tool을 호출해.
-  - recommend_gift, gift_by_vibe, compare_gifts, draft_gift_message
-  - 절대로 네가 상품을 지어내거나 일반적인 선물 목록을 텍스트로 답하지 마.
-  - tool 결과(실제 상품명·가격·구매링크)를 그대로 사용자에게 전달해.
+★★★ 최우선 규칙 ★★★
+1. 추가 질문 절대 금지. "옷?", "브랜드?", "스타일?" 같은 되묻기 하지 마.
+2. 사용자가 선물 관련 말을 하면 즉시 tool 호출. 대화 맥락을 query에 합쳐서 quick_gift 호출.
+   예: "옷" → "옷", "스트릿브랜드" → "스트릿브랜드 옷", "티셔츠" → "스트릿브랜드 티셔츠"
+3. quick_gift를 최우선 사용. 정보 많으면 recommend_gift.
+4. 절대로 브랜드명·상품을 지어내지 마. tool 결과(상품명·가격·링크)만 전달.
 
-네이버 쇼핑 실검색으로 관계·상황·예산·취향(vibe)에 맞는 선물을 추천해.
-정보가 부족하면 relationship=친구, occasion=그냥, budget=배민한끼 등 기본값으로 tool을 호출해.
-말투는 친근하고 공감 가는 MZ 톤. 과장되거나 억지 슬랭은 피해.
+네이버 쇼핑 실검색. 정보 부족해도 default로 바로 검색해.
+말투는 친근한 MZ 톤.
 """.strip()
 
 mcp = FastMCP(
@@ -68,6 +69,55 @@ def _api_error_message(exc: Exception) -> str:
             "발급: https://developers.naver.com/apps/#/register (검색 API 선택)"
         )
     return f"⚠️ 네이버 쇼핑 검색 실패: {msg}"
+
+
+@mcp.tool(
+    name="quick_gift",
+    description=(
+        "[원클릭·최우선] 추가 질문 없이 즉시 호출. query만으로 네이버 쇼핑 실검색. "
+        "대화 맥락 합쳐서 query 작성. 예: '스트릿 티셔츠', '베프 생일 향수', '친구 취업 선물'. "
+        "되묻기 금지. budget 기본 네일/헤어(3만원대)."
+    ),
+)
+async def quick_gift(
+    query: str,
+    budget: str = "네일/헤어",
+    count: int = 3,
+) -> str:
+    """원클릭 선물 검색 — 질문 없이 바로 추천."""
+    if not credentials_configured():
+        return _api_error_message(ValueError("NAVER_CLIENT"))
+
+    budget_min, budget_max = _parse_budget(budget)
+
+    try:
+        results = await quick_gift_search(
+            query,
+            budget_min=budget_min,
+            budget_max=budget_max,
+            limit=min(max(count, 1), 5),
+        )
+    except Exception as exc:
+        return _api_error_message(exc)
+
+    if not results:
+        return (
+            f"🤔 '{query}' 검색 결과가 없어.\n"
+            "키워드를 바꿔서 다시 시도해봐!"
+        )
+
+    header = (
+        f"🎁 **{query}** 선물 추천 (네이버 쇼핑 실검색)\n"
+        f"💰 예산: {budget}\n"
+        "—" * 20
+    )
+    lines = [header, ""]
+    for i, (gift, _score) in enumerate(results, start=1):
+        lines.append(_format_gift(gift, i))
+        lines.append("")
+
+    lines.append("💡 마음에 드는 거 골라줘! 메시지 초안도 만들어줄게.")
+    return "\n".join(lines)
 
 
 @mcp.tool(
@@ -240,7 +290,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Gift Mate MCP",
     description="MZ 감성 선물 고민 종결 MCP — PlayMCP (네이버 쇼핑 실검색)",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])

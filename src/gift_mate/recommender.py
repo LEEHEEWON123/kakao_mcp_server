@@ -189,3 +189,46 @@ async def gifts_by_vibe(vibe: str, limit: int = 5) -> list[ShopGift]:
     query = f"선물 {vibe_word}".strip()
     results = await search_shop(query, display=limit * 3, vibe_hint=vibe)
     return _dedupe_gifts(results)[:limit]
+
+
+async def quick_gift_search(
+    query: str,
+    *,
+    budget_min: int = 0,
+    budget_max: int = 999_999_999,
+    limit: int = 5,
+) -> list[tuple[ShopGift, float]]:
+    """키워드 하나로 바로 네이버 쇼핑 검색."""
+    raw = query.strip()
+    if not raw:
+        return []
+
+    search_query = raw if "선물" in raw else f"{raw} 선물"
+    keywords = [w for w in raw.replace(",", " ").split() if w.strip()]
+
+    try:
+        results = await search_shop(search_query, display=30)
+    except Exception:
+        return []
+
+    unique = _dedupe_gifts(results)
+    scored = [
+        (
+            gift,
+            _score_gift(
+                gift,
+                budget_min=budget_min,
+                budget_max=budget_max,
+                vibe=None,
+                keywords=keywords,
+                occasion="",
+            ),
+        )
+        for gift in unique
+    ]
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    in_budget = [item for item in scored if budget_min <= item[0].price <= budget_max]
+    if in_budget:
+        return in_budget[:limit]
+    return scored[:limit]
