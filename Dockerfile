@@ -11,4 +11,5 @@ ENV PYTHONPATH=/app/src
 
 EXPOSE 8080
 
-CMD ["uvicorn", "gift_mate.server:app", "--host", "0.0.0.0", "--port", "8080"]
+# Railway injects $PORT at runtime
+CMD ["sh", "-c", "uvicorn gift_mate.server:app --host 0.0.0.0 --port ${PORT:-8080}"]
