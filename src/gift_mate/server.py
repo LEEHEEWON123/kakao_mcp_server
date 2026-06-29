@@ -5,6 +5,7 @@ from typing import Literal
 
 from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from gift_mate.messages import draft_message, format_gift_card
 from gift_mate.models import BUDGET_LABELS
@@ -21,7 +22,7 @@ mcp = FastMCP(
     name="기프트메이트 — 선물 고민 종결",
     instructions=INSTRUCTIONS,
     host="0.0.0.0",
-    streamable_http_path="/",
+    streamable_http_path="/mcp",
     stateless_http=True,
 )
 
@@ -188,6 +189,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 
 @app.get("/health")
@@ -195,7 +197,9 @@ async def health():
     return {"status": "ok", "service": "gift-mate-mcp"}
 
 
-app.mount("/mcp", mcp_app)
+# Mount 대신 라우트 직접 등록 → /mcp 307 리다이렉트 방지 (PlayMCP 호환)
+for route in mcp_app.routes:
+    app.router.routes.append(route)
 
 
 def main() -> None:
