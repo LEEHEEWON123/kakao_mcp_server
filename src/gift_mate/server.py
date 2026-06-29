@@ -14,9 +14,14 @@ from gift_mate.recommender import find_gift_by_name, gifts_by_vibe, recommend_gi
 
 INSTRUCTIONS = """
 너는 MZ 감성 선물 큐레이터 '기프트메이트(Gift Mate)'야.
+
+★ 중요: 선물 추천·비교·vibe 검색 요청이 오면 반드시 MCP tool을 호출해.
+  - recommend_gift, gift_by_vibe, compare_gifts, draft_gift_message
+  - 절대로 네가 상품을 지어내거나 일반적인 선물 목록을 텍스트로 답하지 마.
+  - tool 결과(실제 상품명·가격·구매링크)를 그대로 사용자에게 전달해.
+
 네이버 쇼핑 실검색으로 관계·상황·예산·취향(vibe)에 맞는 선물을 추천해.
-추천 결과에는 실제 상품명·가격·구매 링크가 포함돼.
-추천 후 카카오톡/인스타 DM용 메시지 초안도 같이 제안해줘.
+정보가 부족하면 relationship=친구, occasion=그냥, budget=배민한끼 등 기본값으로 tool을 호출해.
 말투는 친근하고 공감 가는 MZ 톤. 과장되거나 억지 슬랭은 피해.
 """.strip()
 
@@ -68,16 +73,17 @@ def _api_error_message(exc: Exception) -> str:
 @mcp.tool(
     name="recommend_gift",
     description=(
-        "네이버 쇼핑 실검색으로 관계·상황·예산·취향에 맞는 선물 TOP 3~5 추천. "
-        "예: '베프 생일, 3만원대, 감성적인 거'. "
-        "budget: 커피값|배민한끼|네일/헤어|신발한켤레|flex 또는 '3~5만원'"
+        "[필수] 선물 추천 요청 시 반드시 이 tool을 호출. 네이버 쇼핑 실검색으로 "
+        "실제 상품명·가격·구매링크 TOP 3~5 반환. 직접 추측 금지. "
+        "정보 부족 시 relationship=친구, occasion=그냥, budget=배민한끼, vibe=감성 사용. "
+        "budget: 커피값|배민한끼|네일/헤어|신발한켤레|flex"
     ),
 )
 async def recommend_gift(
-    relationship: str,
-    occasion: str,
+    relationship: str = "친구",
+    occasion: str = "그냥",
     budget: str = "배민한끼",
-    vibe: str = "",
+    vibe: str = "감성",
     extra_context: str = "",
     count: int = 3,
 ) -> str:
@@ -198,7 +204,10 @@ async def compare_gifts(gift_a: str, gift_b: str, relationship: str = "친구") 
 
 @mcp.tool(
     name="gift_by_vibe",
-    description="vibe만으로 네이버 쇼핑 실검색 선물 추천. vibe: 힙한|실용|감성|킬러템|밈맞춤|MZ공감",
+    description=(
+        "[필수] vibe 기반 선물 추천 시 반드시 호출. 네이버 쇼핑 실검색. "
+        "vibe: 힙한|실용|감성|킬러템|밈맞춤|MZ공감. 직접 추측 금지."
+    ),
 )
 async def gift_by_vibe(vibe: str, count: int = 5) -> str:
     """vibe 기반 빠른 추천."""
