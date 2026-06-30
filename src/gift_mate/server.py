@@ -5,6 +5,7 @@ from typing import Literal
 
 from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from gift_mate.messages import draft_message, format_gift_card
@@ -33,6 +34,19 @@ mcp = FastMCP(
     streamable_http_path="/mcp",
     stateless_http=True,
 )
+
+SERVICE_NAME = "기프트메이트 — 선물 고민 종결"
+
+READ_ONLY_TOOL = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=True,
+)
+
+
+def _tool_description(text: str) -> str:
+    return f"[{SERVICE_NAME}] {text}"
 
 
 def _parse_budget(budget: str) -> tuple[int, int]:
@@ -73,11 +87,12 @@ def _api_error_message(exc: Exception) -> str:
 
 @mcp.tool(
     name="quick_gift",
-    description=(
+    description=_tool_description(
         "[원클릭·최우선] 추가 질문 없이 즉시 호출. query만으로 네이버 쇼핑 실검색. "
         "대화 맥락 합쳐서 query 작성. 예: '스트릿 티셔츠', '베프 생일 향수', '친구 취업 선물'. "
         "되묻기 금지. budget 기본 네일/헤어(3만원대)."
     ),
+    annotations=READ_ONLY_TOOL,
 )
 async def quick_gift(
     query: str,
@@ -122,12 +137,13 @@ async def quick_gift(
 
 @mcp.tool(
     name="recommend_gift",
-    description=(
+    description=_tool_description(
         "[필수] 선물 추천 요청 시 반드시 이 tool을 호출. 네이버 쇼핑 실검색으로 "
         "실제 상품명·가격·구매링크 TOP 3~5 반환. 직접 추측 금지. "
         "정보 부족 시 relationship=친구, occasion=그냥, budget=배민한끼, vibe=감성 사용. "
         "budget: 커피값|배민한끼|네일/헤어|신발한켤레|flex"
     ),
+    annotations=READ_ONLY_TOOL,
 )
 async def recommend_gift(
     relationship: str = "친구",
@@ -182,10 +198,11 @@ async def recommend_gift(
 
 @mcp.tool(
     name="draft_gift_message",
-    description=(
+    description=_tool_description(
         "선택한 선물에 맞는 카카오톡/인스타 DM 메시지 초안 작성. "
         "tone: casual(친근) | funny(웃김) | heartfelt(진심) | formal(격식) | mz_slang(MZ슬랭)"
     ),
+    annotations=READ_ONLY_TOOL,
 )
 async def draft_gift_message(
     recipient_name: str,
@@ -213,7 +230,10 @@ async def draft_gift_message(
 
 @mcp.tool(
     name="compare_gifts",
-    description="두 가지 선물 후보 A vs B 비교 — 네이버 쇼핑 실검색 기준 가격·쇼핑몰·추천",
+    description=_tool_description(
+        "두 가지 선물 후보 A vs B 비교 — 네이버 쇼핑 실검색 기준 가격·쇼핑몰·추천"
+    ),
+    annotations=READ_ONLY_TOOL,
 )
 async def compare_gifts(gift_a: str, gift_b: str, relationship: str = "친구") -> str:
     """선물 A/B 비교."""
@@ -254,10 +274,11 @@ async def compare_gifts(gift_a: str, gift_b: str, relationship: str = "친구") 
 
 @mcp.tool(
     name="gift_by_vibe",
-    description=(
+    description=_tool_description(
         "[필수] vibe 기반 선물 추천 시 반드시 호출. 네이버 쇼핑 실검색. "
         "vibe: 힙한|실용|감성|킬러템|밈맞춤|MZ공감. 직접 추측 금지."
     ),
+    annotations=READ_ONLY_TOOL,
 )
 async def gift_by_vibe(vibe: str, count: int = 5) -> str:
     """vibe 기반 빠른 추천."""
